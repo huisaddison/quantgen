@@ -14,6 +14,7 @@
 #'   \code{i}. This allows for fine control of the "cross-validation" process
 #'   (in quotes, because there need not be any crossing going on here). Default
 #'   is NULL; if specified, takes priority over \code{nfolds}.
+#'   TODO: Update with fit argument
 #'
 #' @return A list with the following components:
 #'   \item{qgl_obj}{A \code{quantile_genlasso} object obtained by fitting on the
@@ -64,6 +65,7 @@ cv_quantile_genlasso = function(x, y, d, tau, lambda=NULL, nlambda=30,
   if (!is.null(train_test_inds)) {
     train = train_test_inds$train
     test = train_test_inds$test
+    fit = train_test_inds$fit
     nfolds = length(train)
   }
   else {
@@ -73,6 +75,7 @@ cv_quantile_genlasso = function(x, y, d, tau, lambda=NULL, nlambda=30,
       train[[k]] = which(folds != k)
       test[[k]] = which(folds == k)
     }
+    fit = 1:nrow(x)
   }
   
   yhat = array(NA, dim=c(nrow(x), length(lambda), length(tau)))
@@ -80,7 +83,7 @@ cv_quantile_genlasso = function(x, y, d, tau, lambda=NULL, nlambda=30,
     if (verbose) cat(sprintf("CV fold %i ...\n", k))
     # Adjustment factor for lambda values, accounting for the differences in
     # training set sizes
-    adj = length(train[[k]]) / nrow(x)
+    adj = length(train[[k]]) / length(fit)
   
     # Fit on training set
     obj = quantile_genlasso_grid(x=x[train[[k]],,drop=FALSE], y=y[train[[k]]],
@@ -110,7 +113,7 @@ cv_quantile_genlasso = function(x, y, d, tau, lambda=NULL, nlambda=30,
 
   # Fit quantile genlasso object on full training set, with optimum lambdas
   if (verbose) cat("Refitting on full training set with optimum lambdas ...\n")
-  qgl_obj = quantile_genlasso(x=x, y=y, d=d, tau=tau, lambda=lambda_min,
+  qgl_obj = quantile_genlasso(x=x[fit,,drop=FALSE], y=y[fit], d=d, tau=tau, lambda=lambda_min,
                               weights=weights, intercept=intercept,
                               standardize=standardize, lb=lb, ub=ub,
                               noncross=noncross, x0=x0, lp_solver=lp_solver,
