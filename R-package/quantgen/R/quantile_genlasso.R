@@ -478,10 +478,10 @@ quantile_genlasso_grid = function(x, y, d, tau, lambda=NULL, nlambda=30,
 
   # Set the lambda sequence, if we need to
   if (is.null(lambda)) {
-    lambda = get_lambda_seq(x=x, y=y, d=d, nlambda=nlambda,
+    lambda = c(get_lambda_seq(x=x, y=y, d=d, nlambda=nlambda,
                             lambda_min_ratio=lambda_min_ratio, weights=weights,
                             intercept=intercept, standardize=standardize,
-                            lp_solver=lp_solver, transform=transform)
+                            lp_solver=lp_solver, transform=transform), 0)
   }
 
   # Create the grid: stack the problems so that tau is constant and lambda is
