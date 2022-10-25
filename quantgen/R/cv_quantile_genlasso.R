@@ -47,6 +47,7 @@ cv_quantile_genlasso = function(x, y, d, tau, lambda=NULL, nlambda=30,
                                 lp_solver=c("glpk","gurobi"), time_limit=NULL,
                                 warm_starts=TRUE, params=list(), transform=NULL,
                                 inv_trans=NULL, jitter=NULL, verbose=FALSE,
+                                additional_constraints=NULL,
                                 sort=FALSE, iso=FALSE, nonneg=FALSE,
                                 round=FALSE) {
   # Check LP solver
@@ -92,7 +93,8 @@ cv_quantile_genlasso = function(x, y, d, tau, lambda=NULL, nlambda=30,
                                  time_limit=time_limit, warm_starts=warm_starts,
                                  params=params, transform=transform,
                                  inv_trans=inv_trans, jitter=jitter,
-                                 verbose=verbose)
+                                 verbose=verbose,
+                                 additional_constraints=additional_constraints)
     # Predict on test set
     yhat[test[[k]],,] = predict(obj, x[test[[k]],,drop=FALSE], sort=sort,
                                 iso=iso, nonneg=nonneg, round=round)
@@ -117,7 +119,8 @@ cv_quantile_genlasso = function(x, y, d, tau, lambda=NULL, nlambda=30,
                               time_limit=time_limit, warm_starts=warm_starts,
                               params=params, transform=transform,
                               inv_trans=inv_trans, jitter=jitter,
-                              verbose=verbose)
+                              verbose=verbose,
+                              additional_constraints=additional_constraints)
   obj = enlist(qgl_obj, cv_mat, lambda_min, tau, lambda)
   class(obj) = "cv_quantile_genlasso"
   return(obj)
@@ -210,7 +213,8 @@ refit_quantile_genlasso = function(obj, x, y, d, tau_new, weights=NULL,
                                    lp_solver=NULL, time_limit=NULL,
                                    warm_starts=NULL, params=NULL,
                                    transform=NULL, inv_trans=NULL, jitter=NULL,
-                                   verbose=FALSE) {
+                                   verbose=FALSE,
+                                   additional_constraints=NULL) {
   # For each new tau, find the nearest tau, and use its CV-optimal lambda
   tau = obj$tau
   lambda = obj$lambda_min 
@@ -239,5 +243,6 @@ refit_quantile_genlasso = function(obj, x, y, d, tau_new, weights=NULL,
                            noncross=noncross, x0=x0, lp_solver=lp_solver,
                            time_limit=time_limit, warm_starts=warm_starts,
                            params=params, transform=transform,
-                           inv_trans=inv_trans, jitter=jitter, verbose=verbose))
+                           inv_trans=inv_trans, jitter=jitter, verbose=verbose,
+                           additional_constraints=additional_constraints))
 }

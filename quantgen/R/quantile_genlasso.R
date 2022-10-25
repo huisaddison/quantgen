@@ -121,7 +121,7 @@ quantile_genlasso = function(x, y, d, tau, lambda, weights=NULL, intercept=TRUE,
                              x0=NULL, lp_solver=c("glpk","gurobi"),
                              time_limit=NULL, warm_starts=TRUE, params=list(),
                              transform=NULL, inv_trans=NULL, jitter=NULL,
-                             verbose=FALSE) { 
+                             verbose=FALSE, additional_constraints=NULL) { 
   # Check LP solver
   lp_solver = match.arg(lp_solver)
   
@@ -170,7 +170,8 @@ quantile_genlasso = function(x, y, d, tau, lambda, weights=NULL, intercept=TRUE,
                              weights=weights, lb=lb_vec, ub=ub_vec,
                              noncross=noncross, x0=x0, lp_solver=lp_solver,
                              time_limit=time_limit, warm_starts=warm_starts,
-                             params=params, jitter=jitter, verbose=verbose)
+                             params=params, jitter=jitter, verbose=verbose,
+                             additional_constraints=additional_constraints)
 
   # Transform beta back to original scale, if we standardized
   if (intercept) {
@@ -195,16 +196,27 @@ quantile_genlasso_lp = function(x, y, d, tau, lambda, weights, lb, ub,
                                 noncross=FALSE, x0=NULL, lp_solver="gurobi",
                                 params=list(), warm_starts=TRUE,
                                 time_limit=time_limit, jitter=NULL,
-                                verbose=FALSE) {
+                                verbose=FALSE, additional_constraints=NULL) {
+  # additional_constraints is list containing attributes `A`, `rhs`, `sense`
+  # (if not NULL).  We do not case on NULL because the c() and rbind()
+  # operations are identity if concatenating with NULL.
+  if (!is.null(additional_constraints) & noncross) {
+    stop('`additional_constraints` not supported with `noncross`.')
+  }
   # Set up some basic objects that we will need
   n = nrow(x); p = ncol(x); m = nrow(d)
   Inn = Diagonal(n); Imm = Diagonal(m)
   Znm = Matrix(0,n,m,sparse=TRUE)
   Zmn = Matrix(0,m,n,sparse=TRUE)
+  if (!is.null(additional_constraints$A)) {
+    nrow_A = nrow(additional_constraints$A)
+    Zam = Matrix(0, nrow_A, m, sparse=TRUE)
+    Zan = Matrix(0, nrow_A, n, sparse=TRUE)
+  }
   model = model_big = list()
   N = 2*n + 2*m; P = p + m + n
   r = length(tau); n0 = nrow(x0)
-  model$sense = rep(">=", N)
+  model$sense = c(rep(">=", N), additional_constraints$sense)
   
   # Determine LP solver
   use_gurobi = FALSE
@@ -272,10 +284,17 @@ quantile_genlasso_lp = function(x, y, d, tau, lambda, weights, lb, ub,
         cbind(-d, Imm, Zmn),
         cbind(d, Imm, Zmn)
       )
+      if (!is.null(additional_constraints)) {
+        model$A = rbind(
+          model$A,
+          cbind(additional_constraints$A, Zam, Zan)
+        )
+      }
     }
 
     # Right hand side of constraints
-    model$rhs = c(tau[k]*y, (tau[k]-1)*y, rep(0,2*m))
+    model$rhs = c(tau[k]*y, (tau[k]-1)*y, rep(0,2*m),
+                  additional_constraints$rhs)
 
     # For noncrossing constraints, save these for later
     if (noncross) {
@@ -476,7 +495,8 @@ quantile_genlasso_grid = function(x, y, d, tau, lambda=NULL, nlambda=30,
                                   ub=Inf, lp_solver=c("glpk","gurobi"),
                                   time_limit=NULL, warm_starts=TRUE,
                                   params=list(), transform=NULL, inv_trans=NULL,
-                                  jitter=NULL, verbose=FALSE) {
+                                  jitter=NULL, verbose=FALSE,
+                                  additional_constraints=NULL) {
   # Check LP solver
   lp_solver = match.arg(lp_solver)
 
@@ -501,7 +521,8 @@ quantile_genlasso_grid = function(x, y, d, tau, lambda=NULL, nlambda=30,
                           x0=NULL, lp_solver=lp_solver, time_limit=time_limit,
                           warm_starts=warm_starts, params=params,
                           transform=transform, inv_trans=inv_trans,
-                          jitter=jitter, verbose=verbose)
+                          jitter=jitter, verbose=verbose,
+                          additional_constraints=additional_constraints)
   class(obj) = c("quantile_genlasso_grid", class(obj))
   return(obj)
 }
