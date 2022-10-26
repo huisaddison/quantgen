@@ -134,6 +134,13 @@ quantile_genlasso = function(x, y, d, tau, lambda, weights=NULL, intercept=TRUE,
   bx = a$bx
   weights = a$weights
 
+  # If intercept, add modify additional constraint matrix
+  if (!is.null(additional_constraints$A) & intercept) {
+    nrow_A = nrow(additional_constraints$A)
+    additional_constraints$A = cbind(rep(0, nrow_A),
+                                     additional_constraints$A)
+  }
+
   # Problem dimensions
   n = nrow(x)
   p = ncol(x)
