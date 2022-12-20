@@ -547,7 +547,8 @@ quantile_genlasso_grid = function(x, y, d, tau, lambda=NULL, nlambda=30,
 #'
 #' @export
 
-get_lambda_max = function(x, y, d, weights=NULL, lp_solver=c("glpk","gurobi")) {
+get_lambda_max = function(x, y, d, weights=NULL, lp_solver=c("glpk","gurobi"),
+                          eps='auto', verbose=FALSE) {
   # Set up some basic objects that we will need
   n = nrow(x); p = ncol(x); m = nrow(d)
   if (is.null(weights)) weights = rep(1,n)
@@ -557,7 +558,23 @@ get_lambda_max = function(x, y, d, weights=NULL, lp_solver=c("glpk","gurobi")) {
 
   # First solve the constrained regression problem
   mat = rbind(cbind(t(x) %*% x, Matrix::t(d)), cbind(d, Zmm))
-  b = solve(mat, c(t(x) %*% y, rep(0,m)))
+  nrow_mat = nrow(mat)
+  if (eps == 'auto') {
+    eps = 1e-8
+    b = NULL
+    while (is.null(b)) {
+      tryCatch({
+        if(verbose) cat('Trying eps=', eps, '...\n')
+        b = solve(mat + eps*diag(nrow_mat), c(t(x) %*% y, rep(0,m)))
+      }, error = function(e) {
+        b = NULL
+      })
+      eps = eps*2
+    }
+    cat('Final eps=', eps/2, '\n')
+  } else if (is.numeric(eps)) {
+    b = solve(mat + eps*diag(nrow_mat), c(t(x) %*% y, rep(0,m)))
+  }
   v = weights * sign(y - x %*% b[1:p]) / 2
 
   # Next remove zero columns from D (and drop from X)
@@ -616,7 +633,8 @@ get_lambda_max = function(x, y, d, weights=NULL, lp_solver=c("glpk","gurobi")) {
 
 get_lambda_seq = function(x, y, d, nlambda, lambda_min_ratio, weights=NULL,
                           intercept=TRUE, standardize=TRUE,
-                          lp_solver=c("glpk","gurobi"), transform=NULL) {
+                          lp_solver=c("glpk","gurobi"), transform=NULL,
+                          eps='auto', verbose=FALSE) {
   # Check LP solver
   lp_solver = match.arg(lp_solver)
 
@@ -625,7 +643,8 @@ get_lambda_seq = function(x, y, d, nlambda, lambda_min_ratio, weights=NULL,
   x = a$x; y = a$y; d = a$d; weights = a$weights
 
   # Compute lambda max then form and return a lambda sequence
-  lambda_max = get_lambda_max(x, y, d, weights, lp_solver)
+  lambda_max = get_lambda_max(x, y, d, weights, lp_solver, eps=eps,
+                              verbose=verbose)
   return(exp(seq(log(lambda_max), log(lambda_max * lambda_min_ratio),
                  length=nlambda)))
 }
